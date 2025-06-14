@@ -18,7 +18,8 @@ ASKING_HEZB, ASKING_DATE, ASKING_HOUR = range(3)
 
 # مسیر فایل کاربران
 USERS_FILE = "users.json"
-QURAN_FILE = "hezbs.csv"
+QURAN_FILE = "hezb_list.csv"
+
 
 # بارگذاری کاربران
 def load_users():
