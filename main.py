@@ -44,7 +44,7 @@ def unknown(update: Update, context: CallbackContext):
 # ✅ راه‌اندازی ربات
 def main():
     # توکن ربات از BotFather
-    TOKEN = "YOUR_BOT_TOKEN_HERE"
+    TOKEN = "7693112096:AAELe2KYhfi0adekfuZlkFQCyzVdJUMvaOM"
 
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
