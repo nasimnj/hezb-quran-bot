@@ -2,13 +2,13 @@ import logging
 import json
 import datetime
 from persiantools.jdatetime import JalaliDate
-from telegram import Update, ReplyKeyboardMarkup
+from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
-# تنظیمات اولیه لاگ
+# تنظیمات لاگ
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# فایل‌های داده
+# فایل‌ها
 USER_DATA_FILE = 'user_data.json'
 HEZB_DATA_FILE = 'hezb_list.csv'
 
@@ -25,7 +25,7 @@ def load_hezb_list():
 hezb_data = load_hezb_list()
 TOTAL_HEZBS = 120
 
-# ذخیره/بارگذاری داده کاربران
+# بارگذاری و ذخیره داده کاربران
 def load_user_data():
     try:
         with open(USER_DATA_FILE, 'r') as f:
@@ -38,12 +38,11 @@ def save_user_data(data):
         json.dump(data, f)
 
 user_data = load_user_data()
-
-# مرحله تنظیمات
 waiting_for = {}
 
+# شروع تنظیمات
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text("سلام! لطفاً تاریخ شروع (شمسی) را وارد کن. مثال: 1403-01-01")
+    update.message.reply_text("سلام! لطفاً تاریخ شروع ختم قرآن (شمسی) را وارد کن. مثال: 1403-01-01")
     waiting_for[update.message.chat_id] = 'date'
 
 def reset(update: Update, context: CallbackContext):
@@ -69,9 +68,9 @@ def handle_message(update: Update, context: CallbackContext):
             start_date = JalaliDate(*map(int, text.split('-'))).to_gregorian()
             user_data[chat_id] = {'start_date': str(start_date)}
             waiting_for[chat_id] = 'hezb'
-            update.message.reply_text("تاریخ ثبت شد ✅\nحالا لطفاً شماره حزب شروع رو وارد کن (عدد بین 1 تا 60)")
+            update.message.reply_text(f"تاریخ ثبت شد ✅\nحالا لطفاً شماره حزب شروع رو وارد کن (عدد بین 1 تا {TOTAL_HEZBS})")
         except:
-            update.message.reply_text("فرمت تاریخ اشتباهه! مثل 1403-01-01 وارد کن.")
+            update.message.reply_text("❌ فرمت تاریخ اشتباهه! مثل 1403-01-01 وارد کن.")
     elif step == 'hezb':
         try:
             hezb_number = int(text)
@@ -79,12 +78,13 @@ def handle_message(update: Update, context: CallbackContext):
                 user_data[chat_id]['hezb_start'] = hezb_number
                 save_user_data(user_data)
                 del waiting_for[chat_id]
-                update.message.reply_text("تنظیمات ذخیره شد ✅\nاز دستور /hezb_today برای مشاهده حزب امروز استفاده کن.")
+                update.message.reply_text(f"تنظیمات ذخیره شد ✅\nاز دستور /hezb_today برای مشاهده حزب امروز استفاده کن.")
             else:
-                update.message.reply_text("عدد باید بین 1 تا 60 باشه.")
+                update.message.reply_text(f"❌ عدد باید بین 1 تا {TOTAL_HEZBS} باشه.")
         except:
-            update.message.reply_text("لطفاً فقط یک عدد وارد کن.")
+            update.message.reply_text("❌ لطفاً فقط یک عدد وارد کن.")
 
+# محاسبه شماره حزب
 def get_hezb_number(start_date_str, start_hezb, day_offset):
     start_date = datetime.date.fromisoformat(start_date_str)
     today = datetime.date.today()
@@ -96,6 +96,7 @@ def get_hezb_text(hezb_number):
     data = hezb_data.get(hezb_number, {})
     return f"📖 حزب {hezb_number}:\nاز سوره {data.get('surah')}، آیه {data.get('ayah')}"
 
+# فرمان‌ها
 def hezb_today(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
     if chat_id not in user_data:
@@ -112,9 +113,20 @@ def hezb_tomorrow(update: Update, context: CallbackContext):
     n = get_hezb_number(user_data[chat_id]['start_date'], user_data[chat_id]['hezb_start'], 1)
     update.message.reply_text(get_hezb_text(n))
 
+def days_passed(update: Update, context: CallbackContext):
+    chat_id = update.message.chat_id
+    if chat_id not in user_data:
+        update.message.reply_text("لطفاً ابتدا با دستور /start تنظیمات رو انجام بده.")
+        return
+    start_date = datetime.date.fromisoformat(user_data[chat_id]['start_date'])
+    today = datetime.date.today()
+    delta_days = (today - start_date).days
+    update.message.reply_text(f"📅 از شروع ختم قرآن {delta_days} روز گذشته.")
+
+# اجرای ربات
 def main():
     import os
-    TOKEN = os.getenv("BOT_TOKEN") or "توکن اینجا بذار اگر نمی‌خوای از env استفاده کنی"
+    TOKEN ="7693112096:AAELe2KYhfi0adekfuZlkFQCyzVdJUMvaOM"
 
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
@@ -123,6 +135,7 @@ def main():
     dp.add_handler(CommandHandler("reset", reset))
     dp.add_handler(CommandHandler("hezb_today", hezb_today))
     dp.add_handler(CommandHandler("hezb_tomorrow", hezb_tomorrow))
+    dp.add_handler(CommandHandler("days_passed", days_passed))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
     updater.start_polling()
