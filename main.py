@@ -23,7 +23,7 @@ def load_hezb_list():
     return hezb_list
 
 hezb_data = load_hezb_list()
-TOTAL_HEZBS = len(hezb_data)
+TOTAL_HEZBS = 120
 
 # ذخیره/بارگذاری داده کاربران
 def load_user_data():
